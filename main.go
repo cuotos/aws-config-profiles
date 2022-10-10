@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"gopkg.in/ini.v1"
@@ -50,16 +52,17 @@ func run() error {
 	profiles := []Profile{}
 
 	for _, section := range cfg.Sections() {
-		if section.Name() == "DEFAULT" {
+		if section.Name() == "DEFAULT" || !strings.HasPrefix(section.Name(), "profile ") {
 			continue
 		}
 
 		p := Profile{
-			Name: section.Name()[8:],
+			Name: strings.TrimPrefix(section.Name(), "profile "),
 		}
 
 		if section.HasKey("sso_account_id") {
 			p.AccountNumber = section.Key("sso_account_id").String()
+			p.AccountLastFour = p.AccountNumber[8:]
 		}
 
 		if section.HasKey("aws_access_key_id") {
@@ -71,6 +74,10 @@ func run() error {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
+	sort.Slice(profiles, func(i, j int) bool {
+		return profiles[i].Name < profiles[j].Name
+	})
+
 	for _, p := range profiles {
 		write(w, p, fullOutput)
 	}
@@ -81,19 +88,16 @@ func run() error {
 }
 
 func write(w io.Writer, profile Profile, long bool) {
-	last4 := ""
-	if len(profile.AccountNumber) > 4 {
-		last4 = profile.AccountNumber[8:]
-	}
 	if long {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n", last4, profile.AccountNumber, profile.AccessKeyId, profile.Name)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n", profile.AccountNumber, profile.AccountLastFour, profile.AccessKeyId, profile.Name)
 	} else {
-		fmt.Fprintf(w, "%s\t%s\t%s\t\n", last4, profile.AccountNumber, profile.Name)
+		fmt.Fprintf(w, "%s\t%s\t\n", profile.AccountLastFour, profile.Name)
 	}
 }
 
 type Profile struct {
-	Name          string
-	AccountNumber string
-	AccessKeyId   string
+	Name            string
+	AccountNumber   string
+	AccountLastFour string
+	AccessKeyId     string
 }
