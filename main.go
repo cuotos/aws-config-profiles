@@ -89,7 +89,7 @@ func run() error {
 
 func write(w io.Writer, profile Profile, long bool) {
 	if long {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n", profile.AccountNumber, profile.AccountLastFour, profile.AccessKeyId, profile.Name)
+		fmt.Fprintf(w, "%s\t%s\t%s\t\n", profile.AccountNumber, profile.AccessKeyId, profile.Name)
 	} else {
 		fmt.Fprintf(w, "%s\t%s\t\n", profile.AccountLastFour, profile.Name)
 	}
