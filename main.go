@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	appVersion string = "not provided"
-	fullOutput        = false
+	version    = "unset"
+	commit     = "unset"
+	fullOutput = false
 )
 
 func main() {
@@ -29,7 +30,7 @@ func run() error {
 	if len(os.Args) == 2 {
 		switch arg := os.Args[1]; arg {
 		case "-v":
-			fmt.Println(appVersion)
+			fmt.Printf("%s-%s", version, commit)
 			os.Exit(0)
 		case "-l":
 			fullOutput = true
