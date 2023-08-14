@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -14,9 +15,8 @@ import (
 )
 
 var (
-	version    = "unset"
-	commit     = "unset"
-	fullOutput = false
+	version = "unset"
+	commit  = "unset"
 )
 
 func main() {
@@ -27,30 +27,68 @@ func main() {
 
 func run() error {
 
-	if len(os.Args) == 2 {
-		switch arg := os.Args[1]; arg {
-		case "-v":
-			fmt.Printf("%s-%s", version, commit)
-			os.Exit(0)
-		case "-l":
-			fullOutput = true
-		default:
-			fmt.Printf("unknown flag %s\n", arg)
-			os.Exit(1)
-		}
+	fullOutput := flag.Bool("l", false, "show full account id")
+	printVersion := flag.Bool("v", false, "show version")
+	flag.Parse()
+
+	if *printVersion {
+		fmt.Printf("%s-%s", version, commit)
+		os.Exit(0)
 	}
+
+	outputProfiles := []Profile{}
+
+	allProfiles, err := getProfilesFromAWSConfig()
+	if err != nil {
+		return err
+	}
+
+	// if user has provided a search string
+	if flag.Arg(0) != "" {
+		searchString := flag.Arg(0)
+
+		for _, p := range allProfiles {
+			if strings.Contains(p.AccountNumber, searchString) || strings.Contains(p.Name, searchString) {
+				outputProfiles = append(outputProfiles, p)
+			}
+		}
+
+	} else {
+		outputProfiles = allProfiles
+	}
+
+	printOutput(outputProfiles, *fullOutput)
+
+	return nil
+}
+
+func printOutput(profiles []Profile, full bool) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+
+	sort.Slice(profiles, func(i, j int) bool {
+		return profiles[i].Name < profiles[j].Name
+	})
+
+	for _, p := range profiles {
+		write(w, p, full)
+	}
+
+	w.Flush()
+}
+
+func getProfilesFromAWSConfig() ([]Profile, error) {
+
+	profiles := []Profile{}
 
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		return profiles, err
 	}
 	configFilePath := filepath.Join(userHomeDir, ".aws", "config")
 	cfg, err := ini.Load(configFilePath)
 	if err != nil {
-		return err
+		return profiles, err
 	}
-
-	profiles := []Profile{}
 
 	for _, section := range cfg.Sections() {
 		if section.Name() == "DEFAULT" || !strings.HasPrefix(section.Name(), "profile ") {
@@ -73,19 +111,7 @@ func run() error {
 		profiles = append(profiles, p)
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-
-	sort.Slice(profiles, func(i, j int) bool {
-		return profiles[i].Name < profiles[j].Name
-	})
-
-	for _, p := range profiles {
-		write(w, p, fullOutput)
-	}
-
-	w.Flush()
-
-	return nil
+	return profiles, nil
 }
 
 func write(w io.Writer, profile Profile, long bool) {
