@@ -1,3 +1,4 @@
+version: 2
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
 before:
@@ -15,12 +16,21 @@ builds:
       -X main.commit={{ slice .Commit 0 8 }}
       -X main.version={{ .Version }}
 archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      windows: Windows
-      386: i386
-      amd64: x86_64
+  - name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+brews:
+  - name: aws-config-profiles
+    directory: Formula
+    repository:
+      owner: cuotos
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
 checksum:
   name_template: 'checksums.txt'
 snapshot:
